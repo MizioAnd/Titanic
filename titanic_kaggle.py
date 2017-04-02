@@ -1,5 +1,6 @@
 # titanic_panda.py is Panda tutorial from https://www.kaggle.com/c/titanic/details/getting-started-with-python-ii
 # Assumes python vers. 2.7
+__author__ = 'mizio'
 import csv as csv
 import numpy as np
 import pandas as pd
@@ -10,27 +11,25 @@ from sklearn.model_selection import cross_val_score
 # from sklearn.ensemble import RandomForestClassifier
 
 
-
 class TitanicPanda(object):
     def __init__(self):
         self.df = TitanicPanda.df
         self.df_test = TitanicPanda.df_test
 
-
     ''' Numpy Arrays for dataFrame'''
     def data_frame_with_numpy(self):
-        csv_file_object = csv.reader(open('/home/user/Documents/Kaggle/Titanic/train.csv', 'rb'))
+        csv_file_object = csv.reader(open('/home/mizio/Documents/Kaggle/Titanic/train.csv', 'rb'))
         header = csv_file_object.next()
         data = []
 
         for row in csv_file_object:
-            data.append(row) # appends in row index
+            data.append(row)  # appends in row index
         data = np.array(data)
-        print np.shape(data)
-        print data
+        print(np.shape(data))
+        print(data)
 
-        print data[0:15, 5]
-        print type(data[0::, 5])
+        print(data[0:15, 5])
+        print(type(data[0::, 5]))
 
         # Mean of passenger ages
         # ages_onboard = data[0::,5].astype(np.float) # makes trouble with the empty string in position 6. We need Pandas to fix this.
@@ -38,9 +37,8 @@ class TitanicPanda(object):
 
     ''' Pandas DataFrame '''
     # For .read_csv, always use header=0 when you know row 0 is the header row
-    df = pd.read_csv('/home/user/Documents/Kaggle/Titanic/train.csv', header=0)
-    df_test = pd.read_csv('/home/user/Documents/Kaggle/Titanic/test.csv', header=0)
-
+    df = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/train.csv', header=0)
+    df_test = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/test.csv', header=0)
 
     ''' Data Munging '''
     # print df['Age'].mean()
@@ -98,8 +96,8 @@ class TitanicPanda(object):
         median_var = np.zeros((2, 3))
         for i in range(0, 2):
             for j in range(0, 3):
-                isMedian = 1
-                if isMedian:
+                is_median = 1
+                if is_median:
                     median_var[i, j] = df[(df['Gender'] == i) & (df['Pclass'] == j + 1)][estimated_var].dropna().median()
                 else:
                     # Uses mean value
@@ -117,8 +115,8 @@ class TitanicPanda(object):
         for i in range(0, 2):
             for j in range(0, 3):
                 for l in range(0, 5):
-                    isMedian = 1
-                    if isMedian:
+                    is_median = 1
+                    if is_median:
                         median_var[i, j, l] = df[(df['Gender'] == i) & (df['Pclass'] == j + 1) & (df['Title'] == l)][estimated_var].dropna().median()
                     else:
                         # Uses mean value
@@ -146,28 +144,27 @@ class TitanicPanda(object):
         df[estimated_var_is_null] = pd.isnull(df_estimated_var).astype(int)
 
     # Todo: we get negative age estimates with mice
-    def estimate_by_gender_pclass_title_mice(self, df, df_estimated_var, estimated_var, estimated_var_fill, estimated_var_is_null):
+    def estimate_by_gender_pclass_title_mice(self, df, estimated_var, estimated_var_fill, estimated_var_is_null):
         df[estimated_var_fill] = df[estimated_var]
         random.seed(129)
         mice = MICE()  #model=RandomForestClassifier(n_estimators=100))
-        if any('Survived' == df.columns.values):
-            inputFeatures = ['Pclass','Gender','FamilySize','Survived', 'Parch', 'SibSp', 'Age']
-            res = mice.complete(df[inputFeatures].values)
+        if any(tuple('Survived' == df.columns.values)):
+            input_features = ['Pclass', 'Gender', 'FamilySize', 'Survived', 'Parch', 'SibSp', 'Age']
+            res = mice.complete(df[input_features].values)
             df[estimated_var_fill] = res[:, 6]
         else:
-            inputFeatures = ['Pclass', 'Gender', 'FamilySize', 'Parch', 'SibSp', 'Age']
-            res = mice.complete(df[inputFeatures].values)
+            input_features = ['Pclass', 'Gender', 'FamilySize', 'Parch', 'SibSp', 'Age']
+            res = mice.complete(df[input_features].values)
             df[estimated_var_fill] = res[:, 5]
 
-        df[estimated_var_is_null] = pd.isnull(df_estimated_var).astype(int)
-
+        df[estimated_var_is_null] = pd.isnull(df[estimated_var]).astype(int)
 
     def estimate_by_gender_title(self, df, df_estimated_var, estimated_var, estimated_var_fill, estimated_var_is_null):
         median_var = np.zeros((2, 5))
         for i in range(0, 2):
             for j in range(0, 5):
-                isMedian = 1
-                if isMedian:
+                is_median = 1
+                if is_median:
                     median_var[i, j] = df[(df['Gender'] == i) & (df['Title'] == j)][estimated_var].dropna().median()
                 else:
                     # Uses mean value
@@ -179,7 +176,6 @@ class TitanicPanda(object):
                 df.loc[(df_estimated_var.isnull()) & (df.Gender == i) & (df.Title == j), estimated_var_fill] = median_var[i, j]
 
         df[estimated_var_is_null] = pd.isnull(df_estimated_var).astype(int)
-
 
     def estimate_by_age_pclass(self, df, df_estimated_var, estimated_var, estimated_var_fill, estimated_var_is_null):
         # Must depend on class and age. We are expecting a big matrix since age is a parameter
@@ -195,8 +191,6 @@ class TitanicPanda(object):
                 df.loc[(df_estimated_var.isnull()) & (df.AgeFill == i) & (df.Pclass == j+1), estimated_var_fill] = median_var[i,j]
 
         df[estimated_var_is_null] = pd.isnull(df_estimated_var).astype(int)
-
-
 
     ''' Feature Engineering '''
     def feature_engineering(self, df):
@@ -247,16 +241,14 @@ class TitanicPanda(object):
         df.loc[(df.Title == 'Mme'), 'Title'] = 'Mrs'
         df['Title'] = df['Title'].map({'Master': 0, 'Miss': 1, 'Mr': 2, 'Mrs': 3, 'Rare Title': 4}).astype(int)
 
-
         # self.estimate_by_gender_title(df, df.Age, 'Age', 'AgeFill', 'AgeIsNull')
         # self.estimate_by_gender_pclass_title(df, df.Age, 'Age', 'AgeFill', 'AgeIsNull')
         # self.estimate_by_gender_pclass_title_random(df, df.Age, 'Age', 'AgeFill', 'AgeIsNull')
-        self.estimate_by_gender_pclass_title_mice(df, df.Age, 'Age', 'AgeFill', 'AgeIsNull')
+        self.estimate_by_gender_pclass_title_mice(df, 'Age', 'AgeFill', 'AgeIsNull')
         # self.estimate_by_gender_pclass(df, df.Age, 'Age', 'AgeFill', 'AgeIsNull')
         self.estimate_by_gender_pclass_title_random(df, df.Fare, 'Fare', 'FareFill', 'FareIsNull')
         # self.estimate_by_gender_pclass_title(df, df.Fare, 'Fare', 'FareFill', 'FareIsNull')
         self.embarked_estimate(df, df.Embarked, 'Embarked', 'EmbarkedFill', 'EmbarkedIsNull')
-
 
         df['Age*Class'] = df.AgeFill * df.Pclass
         df['Fare*Class'] = df.FareFill * df.Pclass
@@ -272,7 +264,6 @@ class TitanicPanda(object):
         # todo: could there be any correlations on gender for a child to survive
         # Answ.: gender is already in the calculation
         # todo: a feature could examine whether the passengers in cabins a upper compared to lower deck were more likely to survive.
-
 
         # family or not in family
         # implies a score of: 0.75598. Thus the feature is not good.
@@ -345,7 +336,6 @@ class TitanicPanda(object):
     def decision_boundary(self, x, theta):
         return np.dot(theta.T, x)
 
-
     def feature_2D_plot(self, df, correlated_column_1, correlatedColumn2, h):
         xDimRed = df[[correlated_column_1, correlatedColumn2]]
         X = xDimRed.values
@@ -389,21 +379,21 @@ def main():
     df_test_publ = titanic_panda_inst.df_test[:][:]
 
     df = titanic_panda_inst.prepare_data_random_forest(df_publ)
-    print '\n TRAINING DATA:----------------------------------------------- \n'
-    print df.head(3)
-    print '\n'
-    print df.info()
-    print '\n'
-    print df.describe()
+    print('\n TRAINING DATA:----------------------------------------------- \n')
+    print(df.head(3))
+    print('\n')
+    print(df.info())
+    print('\n')
+    print(df.describe())
     train_data = df.values
     # Test data
     passengerId_df_test = titanic_panda_inst.df_test['PassengerId']  # Submission column
     df_test = titanic_panda_inst.prepare_data_random_forest(df_test_publ)
-    print '\n TEST DATA:----------------------------------------------- \n'
-    print df_test.info()
-    print '\n'
-    print df_test.describe()
-    print '\n'
+    print('\n TEST DATA:----------------------------------------------- \n')
+    print(df_test.info())
+    print('\n')
+    print(df_test.describe())
+    print('\n')
     test_data = df_test.values
 
     # print np.any(np.isnan(test_data))
@@ -411,12 +401,12 @@ def main():
     # print df_test.index[df_test.Parch.isnull()]
     # print df.index[df.Embarked.isnull()]
 
-
     ''' Explore data '''
     explore_data = 0
     if explore_data:
 
-        print("Total Records for missing values: {}\n".format(titanic_panda_inst.df["Age"].count() + titanic_panda_inst.df_test['Age'].count()))
+        print("Total Records for missing values: {}\n".format(titanic_panda_inst.df["Age"].count() +
+                                                              titanic_panda_inst.df_test['Age'].count()))
 
         print("Training set missing values")
         print(titanic_panda_inst.df.isnull().sum())
@@ -428,7 +418,8 @@ def main():
 
         print("\n=== AFTER IMPUTERS ===\n")
         print("=== Check for missing values in set ===")
-        print("Total Records for missing values: {}\n".format(titanic_panda_inst.df["Age"].count() + titanic_panda_inst.df_test['Age'].count()))
+        print("Total Records for missing values: {}\n".format(titanic_panda_inst.df["Age"].count() +
+                                                              titanic_panda_inst.df_test['Age'].count()))
 
         print("Training set missing values")
         print(df.isnull().sum())
@@ -436,7 +427,6 @@ def main():
 
         print("Testing set missing values")
         print(df_test.isnull().sum())
-
 
         # Overview of data with histograms
         # df_test[df_test['Gender'] == 0].hist(bins=16, alpha=.5)
@@ -456,9 +446,9 @@ def main():
         # plt.show()
         # plt.close()
 
-
         # Correlation Sex and Age. Violin plot
-        sns.violinplot(x='Sex', y='Age', hue='Survived', data=titanic_panda_inst.df, split=True, cut=0, inner='stick', palette='Set1')
+        sns.violinplot(x='Sex', y='Age', hue='Survived', data=titanic_panda_inst.df, split=True, cut=0, inner='stick',
+                       palette='Set1')
         plt.show()
         plt.close()
 
@@ -486,11 +476,10 @@ def main():
 
         # Good overview of features histogram FamilySize
         for ite in np.arange(0, 2):
-            df[df.Survived == ite]['AgeFill'].hist(bins=100, alpha=0.5)#, range=(0, 100))
+            df[df.Survived == ite]['AgeFill'].hist(bins=100, alpha=0.5)  # , range=(0, 100))
         plt.legend(('Dead 0', 'Survived 1'), loc=1, borderaxespad=0.)
         plt.show()
         plt.close()
-
 
         # Good overview of features Embarkment based on fare price. There is split at Fare = 80
         for ite in np.arange(0, 3):
@@ -517,8 +506,6 @@ def main():
         # plt.show()
         plt.close()
 
-
-
         # Plot correlation between two features
         # 'x' denote dead and 'o' denote survived.
         ax1 = plt.subplot(1, 1, 1)
@@ -527,16 +514,18 @@ def main():
         # correlated_column_2 = 'EmbarkedFill'
         correlated_column_1 = 'Gender'
         correlated_column_2 = 'Title'
-        df_two_Correlation_survived = df[(df.Survived == 1) & (df.ChildOrAdult == ChildOrAdult_value)][[correlated_column_1, correlated_column_2]]
-        ax1.plot(df_two_Correlation_survived.values[0::, 1], df_two_Correlation_survived.values[0::, 0], 'o')
-        df_two_Correlation_dead = df[df.Survived == 0 & (df.ChildOrAdult == ChildOrAdult_value)][[correlated_column_1, correlated_column_2]]
+        df_two_correlation_survived = df[(df.Survived == 1) &
+                                         (df.ChildOrAdult == ChildOrAdult_value)][[correlated_column_1,
+                                                                                   correlated_column_2]]
+        ax1.plot(df_two_correlation_survived.values[0::, 1], df_two_correlation_survived.values[0::, 0], 'o')
+        df_two_Correlation_dead = df[df.Survived == 0 & (df.ChildOrAdult == ChildOrAdult_value)][[correlated_column_1,
+                                                                                                  correlated_column_2]]
         ax1.plot(df_two_Correlation_dead.values[0::, 1], df_two_Correlation_dead.values[0::, 0], 'x')
         plt.axis('tight')
         # plt.show()
         # plt.close()
         # Obs. The majority of adult men died. Hence a model is not easily able to predict if a man survived and would possible estimate a man as dead
         # Consequence: The real structure in the data is shown in the women and children that survived and assuming all men dead.
-
 
     ''' Random Forest '''
     # Fit the training data to the survived labels and create the decision trees
@@ -545,9 +534,9 @@ def main():
 
     # Random forest classifier based on cross validation parameter dictionary
     # Create the random forest object which will include all the parameters for the fit
-    forest = RandomForestClassifier(max_features='sqrt')#n_estimators=100)#, n_jobs=-1)#, max_depth=None, min_samples_split=2, random_state=0)#, max_features=np.sqrt(5))
+    forest = RandomForestClassifier(max_features='sqrt')  # n_estimators=100)#, n_jobs=-1)#, max_depth=None, min_samples_split=2, random_state=0)#, max_features=np.sqrt(5))
     parameter_grid = {'max_depth': [4,5,6,7,8], 'n_estimators': [200,210,240,250],'criterion': ['gini', 'entropy']}
-    cross_validation = StratifiedKFold(n_splits=2, random_state=None, shuffle=False)  #, n_folds=10)
+    cross_validation = StratifiedKFold(n_splits=2, random_state=None, shuffle=False)  # , n_folds=10)
     grid_search = GridSearchCV(forest, param_grid=parameter_grid, cv=cross_validation)
     grid_search = grid_search.fit(x_train, y_train)
     output = grid_search.predict(test_data)
@@ -555,11 +544,11 @@ def main():
     print('Best parameters: {}'.format(grid_search.best_params_))
 
     # Random forest (rf) classifier for feature selection
-    forest_feature_selection = RandomForestClassifier(max_features='sqrt')#n_estimators=100)#, n_jobs=-1)#, max_depth=None, min_samples_split=2, random_state=0)#, max_features=np.sqrt(5))
+    forest_feature_selection = RandomForestClassifier(max_features='sqrt')  # n_estimators=100)#, n_jobs=-1)#, max_depth=None, min_samples_split=2, random_state=0)#, max_features=np.sqrt(5))
     forest_feature_selection = forest_feature_selection.fit(x_train, y_train)
     score = forest_feature_selection.score(x_train, y_train)
-    print '\nSCORE random forest train data:---------------------------------------------------'
-    print score
+    print('\nSCORE random forest train data:---------------------------------------------------')
+    print(score)
     # print titanic_panda_inst.compute_score_crossval(forest_feature_selection, x_train, y_train)
     # Take the same decision trees and run it on the test data
     # output = forest_feature_selection.predict(test_data)
@@ -571,35 +560,32 @@ def main():
     # plt.close()
     # print np.argmax(np.histogram(output, bins=[0, 1, 2])[0])
 
-
     # Evaluate variable importance with no cross validation
     importances = forest_feature_selection.feature_importances_
     std = np.std([tree.feature_importances_ for tree in forest_feature_selection.estimators_], axis=0)
     indices = np.argsort(importances)[::-1]
 
-    print '\nFeatures:'
-    print np.reshape(np.append(np.array(list(df_test)), np.arange(0, len(list(df_test)))), (len(list(df_test)), 2), 'F')#, 2, len(list(df_test)))
+    print('\nFeatures:')
+    print(np.reshape(np.append(np.array(list(df_test)), np.arange(0, len(list(df_test)))),
+                     (len(list(df_test)), 2), 'F'))  # , 2, len(list(df_test)))
 
-    print 'Feature ranking:'
+    print('Feature ranking:')
     for f in range(x_train.shape[1]):
-        print '%d. feature %d (%f)' % (f + 1, indices[f], importances[indices[f]])
+        print('%d. feature %d (%f)' % (f + 1, indices[f], importances[indices[f]]))
 
     # Select most important features
     feature_selection_model = SelectFromModel(forest_feature_selection, prefit=True)
     x_train_new = feature_selection_model.transform(x_train)
-    print x_train_new.shape
+    print(x_train_new.shape)
     test_data_new = feature_selection_model.transform(test_data)
-    print test_data_new.shape
+    print(test_data_new.shape)
     # We get that four features are selected
 
     forest = forest.fit(x_train_new, y_train)
     score = forest.score(x_train_new, y_train)
-    print '\nSCORE random forest train data (feature select):---------------------------------------------------'
-    print score
-    print titanic_panda_inst.compute_score_crossval(forest, x_train_new, y_train)
-
-
-
+    print('\nSCORE random forest train data (feature select):---------------------------------------------------')
+    print(score)
+    print(titanic_panda_inst.compute_score_crossval(forest, x_train_new, y_train))
 
     feature_ranking_plot = 0
     if feature_ranking_plot:
@@ -611,34 +597,28 @@ def main():
         plt.show()
         plt.close()
 
-
-
     ''' Logistic Regression '''
     logreg = LogisticRegression(max_iter=100, random_state=42)
     logreg.fit(x_train, y_train)
     y_pred = logreg.predict(test_data)
     # output = y_pred
     score = logreg.score(x_train, y_train)
-    print '\nSCORE Logistic regression training data:---------------------------------------------------'
-    print score
-
+    print('\nSCORE Logistic regression training data:---------------------------------------------------')
+    print(score)
 
     ''' Gaussian naive Bayes'''
     gaussian = GaussianNB()
     gaussian.fit(x_train, y_train)
     Y_pred = gaussian.predict(test_data)
     score = gaussian.score(x_train, y_train)
-    print '\nSCORE Gaussian naive Bayes training data:---------------------------------------------------'
-    print score
-
+    print('\nSCORE Gaussian naive Bayes training data:---------------------------------------------------')
+    print(score)
 
     ''' SVC with RBF kernel '''
     rbf_svc = svm.SVC(kernel='rbf', gamma=0.7, C=1).fit(x_train, y_train)
     score = rbf_svc.score(x_train, y_train)
-    print ''.join(['\nSVC with RBF kernel', ' SCORE test data:---------------------------------------------------'])
-    print score
-
-
+    print(''.join(['\nSVC with RBF kernel', ' SCORE test data:---------------------------------------------------']))
+    print(score)
 
     ''' Isolation Forest '''
     # As data may contain outliers.
@@ -658,7 +638,6 @@ def main():
         h = .02  # step size in the mesh
         # h = 50.0
 
-
         X, y, xx, yy = titanic_panda_inst.feature_2D_plot(df, correlated_column_1, correlated_column_2, h)
         X_test = df_test[[correlated_column_1, correlated_column_2]].values
 
@@ -677,9 +656,9 @@ def main():
         # print y_pred_train
 
         # Exclude suggested outlier samples for improvement of prediction power/score
-        outlierMapOut_train = np.array(map(lambda x: x == 1, y_pred_train))
-        x_train_modified = x_train[outlierMapOut_train, ]
-        y_train_modified = y_train[outlierMapOut_train, ]
+        outlier_map_out_train = np.array(map(lambda x: x == 1, y_pred_train))
+        x_train_modified = x_train[outlier_map_out_train, ]
+        y_train_modified = y_train[outlier_map_out_train, ]
         # print np.shape(y_train_modified)
         # print x_train_modified
 
@@ -692,8 +671,8 @@ def main():
         # Take the same decision trees and run it on the test data
         output = forest.predict(test_data)
         score = forest.score(x_train_modified, y_train_modified)
-        print 'SCORE random forest with isolation forest train data:---------------------------------------------------'
-        print score
+        print('SCORE random forest with isolation forest train data:--------------------------------------------------')
+        print(score)
 
         # plot the line, the samples, and the nearest vectors to the plane
         Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
@@ -712,7 +691,6 @@ def main():
 
         plt.show()
         plt.close()
-
 
     # Decision boundary in two dimensions
     decision_boundary_plot = 0
@@ -742,13 +720,11 @@ def main():
                   'SVC with RBF kernel',
                   'SVC with polynomial (degree 3) kernel']
 
-
         # Print the scores
         for i, clf in enumerate((svc, lin_svc, rbf_svc, poly_svc)):
             score = clf.score(X, y)
-            print ''.join([titles[i], 'SCORE train data:---------------------------------------------------'])
-            print score
-
+            print(''.join([titles[i], 'SCORE train data:---------------------------------------------------']))
+            print(score)
 
         for i, clf in enumerate((svc, lin_svc, rbf_svc, poly_svc)):
             # Plot the decision boundary. For that, we will assign a color to each
@@ -828,27 +804,70 @@ def main():
         plt.show()
         plt.close()
 
-
     ''' Correlation Coefficient using Logistic Regression '''
     coefficients_df = pd.DataFrame(df.columns.delete(0))
     # coefficients_df = pd.DataFrame(df)
     coefficients_df.columns = ['Features']
     coefficients_df['Coefficient estimates'] = pd.Series(logreg.coef_[0])
-    print '\n'
-    print coefficients_df
+    print('\n')
+    print(coefficients_df)
 
+    # DB, failed attempt
+    # ax1.plot(xDimRed.values[0::, 1], xDimRed.values[0::, 0], 'o')
+    # x_min, x_max = xDimRed.values[0::, 1].min() - 1, xDimRed.values[0::, 1].max() + 1
+    # y_min, y_max = xDimRed.values[0::, 0].min() - 1, xDimRed.values[0::, 0].max() + 1
 
+    # xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+    # xx, yy = np.mgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+    # grid = np.c_[xx.ravel(), yy.ravel()]
+    # clf = logreg.fit(x_train, y_train)
+    # probs = clf.predict_proba(x_train)#[:, 1]#.reshape(np.shape(x_train))#.reshape(xx.shape)
+    # print np.shape(probs)
 
+    # Todo: start with a normal contour plot
+    # f, ax = plt.subplots(figsize=(8, 6))
+    # X, Y = np.meshgrid(xDimRed.values[0::, 1], xDimRed.values[0::, 0])
+    # ax.scatter(xDimRed.values[0::, 1], xDimRed.values[0::, 0], c=probs, cmap='RdBu')#, vmin=-.2, vmax=1.2, edgecolor='white', linewidths=1)
+    # contour = ax.contourf(xDimRed.values[0::, 1], xDimRed.values[0::, 0], np.array(probs), 25, cmap='RdBu', vmin=0, vmax=1)
+    # Z1 = plt.mlab.bivariate_normal(X, Y, 1.0, 1.0, 0.0, 0.0)
+    # Z2 = plt.mlab.bivariate_normal(X, Y, 1.5, 0.5, 1, 1)
+    # Z = 10 * (Z1 - Z2)
+    # contour = ax.contourf(np.diag(xDimRed.values[0::, 1]), np.diag(xDimRed.values[0::, 0]), np.diag(probs), 25, cmap='RdBu', vmin=0,
+    #                       vmax=1)
+    # ax_c = f.colorbar(contour)
+    # ax_c.set_label('$P(y = 1)$')
+    # plt.show()
 
+    # Decision boundary from coefficients
+    # Form the theta vector
+    # theta_0 = 1.0
+    # print df.columns
+    # print type(df.columns.get_loc(correlated_column_1))
+    # theta_1 = coefficients_df.values[df.columns.get_loc(correlated_column_1), 1]
+    # theta_2 = coefficients_df.values[df.columns.get_loc(correlated_column_2), 1]
+    # theta_vec = np.array([theta_0, theta_1, theta_2])
+    # print type(theta_1)
+
+    # Z = logreg.predict(np.c_[xx.ravel(), yy.ravel()])
+    # Z = Z.reshape(xx.shape)
+    # plt.figure()
+    # plt.contourf(xx, yy, Z, cmap=plt.cm.Paired)
+    # plt.title("Decision surface of LogisticRegression (%s)")
+    # plt.axis('tight')
+    # plt.show()
 
     ''' Submission '''
     # Submission requires a csv file with PassengerId and Survived columns.
-    dfBestScore = pd.read_csv('/home/user/Documents/Kaggle/Titanic/submission/submissionTitanic.csv', header=0)
+    # Compare with best submission score: 0.79
+    # dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanic_79Score.csv', header=0)
+    # dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanicFeatTitle079426.csv', header=0)
+    # dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanic078947.csv', header=0)
+    dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanic.csv', header=0)
 
     # We do not expect all to be equal since the learned model differs from time to time.
     # print (dfBestScore.values[0::, 1::].ravel() == output.astype(int))
     # print np.array_equal(dfBestScore.values[0::, 1::].ravel(), output.astype(int))  # But they are almost never all equal
-    savePath = '/home/user/Documents/Kaggle/Titanic/submission/'
+    savePath = '/home/mizio/Documents/Kaggle/Titanic/submission/'
     submission = pd.DataFrame({'PassengerId': passengerId_df_test, 'Survived': output.astype(int)})
     submission.to_csv(''.join([savePath, 'submissionTitanic.csv']), index=False)
 
