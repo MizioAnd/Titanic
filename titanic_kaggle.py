@@ -402,7 +402,7 @@ def main():
     # print df.index[df.Embarked.isnull()]
 
     ''' Explore data '''
-    explore_data = 0
+    explore_data = 1
     if explore_data:
 
         print("Total Records for missing values: {}\n".format(titanic_panda_inst.df["Age"].count() +
@@ -587,7 +587,7 @@ def main():
     print(score)
     print(titanic_panda_inst.compute_score_crossval(forest, x_train_new, y_train))
 
-    feature_ranking_plot = 0
+    feature_ranking_plot = 1
     if feature_ranking_plot:
         plt.figure()
         plt.title('Feature importances')
@@ -693,7 +693,7 @@ def main():
         plt.close()
 
     # Decision boundary in two dimensions
-    decision_boundary_plot = 0
+    decision_boundary_plot = 1
     if decision_boundary_plot:
 
         correlated_column_1 = 'Pclass'
@@ -754,7 +754,7 @@ def main():
     '''
     # OOB Errors for Random Forests
     '''
-    OOB_error_plot = 0
+    OOB_error_plot = 1
     if OOB_error_plot:
         random_state = 123
 
