@@ -8,6 +8,7 @@ import pylab as plt
 from fancyimpute import MICE
 import random
 from sklearn.model_selection import cross_val_score
+import tensorflow as tf
 # from sklearn.ensemble import RandomForestClassifier
 
 
@@ -18,7 +19,7 @@ class TitanicPanda(object):
 
     ''' Numpy Arrays for dataFrame'''
     def data_frame_with_numpy(self):
-        csv_file_object = csv.reader(open('/home/mizio/Documents/Kaggle/Titanic/train.csv', 'rb'))
+        csv_file_object = csv.reader(open('../input/train.csv', 'rb'))
         header = csv_file_object.next()
         data = []
 
@@ -37,8 +38,8 @@ class TitanicPanda(object):
 
     ''' Pandas DataFrame '''
     # For .read_csv, always use header=0 when you know row 0 is the header row
-    df = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/train.csv', header=0)
-    df_test = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/test.csv', header=0)
+    df = pd.read_csv('../input/train.csv', header=0)
+    df_test = pd.read_csv('../input/test.csv', header=0)
 
     ''' Data Munging '''
     # print df['Age'].mean()
@@ -356,6 +357,46 @@ class TitanicPanda(object):
         # Scales all features to be values in [0,1]
         features = list(df.columns)
         df[features] = df[features].apply(lambda x: x/x.max(), axis=0)
+    def linear_model(self, input_vector, weight_matrix, bias_vector):
+        # f(x) = Wx + b
+        # W is the weight matrix with elements w_ij
+        # x is the input vector
+        # b is the bias vector
+        # In the machine learning literature f(x) is called an activation
+        return tf.matmul(input_vector, weight_matrix) + bias_vector
+
+    def activation_out(self, logit):
+        return self.activation(logit, switch_var=0)
+
+    def activation_hidden(self, logit):
+        return self.activation(logit, switch_var=0)
+
+    def activation(self, logit, switch_var=0):
+        # Also called the activation function
+        if switch_var == 0:
+            # Logistic sigmoid function.
+            # sigma(a) = 1/(1+exp(-a))
+            return tf.nn.sigmoid(logit)
+        elif switch_var == 1:
+            # Using Rectifier as activation function. Rectified linear unit (ReLU). Compared to sigmoid or other
+            # activation functions it allows for faster and effective training of neural architectures.
+            # f(x) = max(x,0)
+            return tf.nn.relu(logit)
+        else:
+            # Softmax function.
+            # S(y_i) = e^y_i/(Sum_j e^y_j)
+            return tf.nn.softmax(logit)
+
+    def accuracy(self, predictions, labels):
+        # Sum the number of cases where the predictions are correct and divide by the number of predictions
+        number_of_correct_predictions = np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
+        return 100*number_of_correct_predictions/predictions.shape[0]
+
+    def reformat_data(self, labels, num_labels):
+        # Map labels/target value to one-hot-encoded frame. None is same as implying newaxis() just replicating array
+        # if num_labels > 2:
+        labels = (np.arange(num_labels) == labels[:, None]).astype(np.float64)
+        return labels
 
 
 def main():
@@ -369,7 +410,7 @@ def main():
     import seaborn as sns
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import GridSearchCV
-
+    import tensorflow as tf
     ''' Prepare data: '''
     # Training data
 
@@ -402,7 +443,7 @@ def main():
     # print df.index[df.Embarked.isnull()]
 
     ''' Explore data '''
-    explore_data = 1
+    explore_data = 0
     if explore_data:
 
         print("Total Records for missing values: {}\n".format(titanic_panda_inst.df["Age"].count() +
@@ -587,7 +628,7 @@ def main():
     print(score)
     print(titanic_panda_inst.compute_score_crossval(forest, x_train_new, y_train))
 
-    feature_ranking_plot = 1
+    feature_ranking_plot = 0
     if feature_ranking_plot:
         plt.figure()
         plt.title('Feature importances')
@@ -693,7 +734,7 @@ def main():
         plt.close()
 
     # Decision boundary in two dimensions
-    decision_boundary_plot = 1
+    decision_boundary_plot = 0
     if decision_boundary_plot:
 
         correlated_column_1 = 'Pclass'
@@ -754,7 +795,7 @@ def main():
     '''
     # OOB Errors for Random Forests
     '''
-    OOB_error_plot = 1
+    OOB_error_plot = 0
     if OOB_error_plot:
         random_state = 123
 
@@ -856,20 +897,155 @@ def main():
     # plt.axis('tight')
     # plt.show()
 
+    is_tensorflow = 1
+    if is_tensorflow:
+        # Tensorflow uses a dataflow graph to represent your computations in terms of dependencies.
+        num_labels = np.unique(df.loc[:, 'Survived'].values).shape[0]
+        num_columns = df[(df.columns[(df.columns != 'Survived') & (df.columns != 'PassengerId')])].shape[1]
+        y_train = titanic_panda_inst.reformat_data(y_train, num_labels=num_labels)
+        graph = tf.Graph()
+        with graph.as_default():
+            # Load training and test data into constants that are attached to the graph
+            tf_train = tf.constant(x_train.astype('float64'))
+            tf_train_labels = tf.constant(y_train)
+            # tf_val = tf.constant(x_val.astype('float64'))
+            tf_test = tf.constant(test_data.astype('float64'))
+
+            # As in a neural network the goal is to compute the cross-entropy D(S(w,x), L)
+            # x, input training data
+            # w_ij, are elements of the weight matrix
+            # L, labels or target values of the training data (classification problem)
+            # S(), is softmax function
+            # Do the Multinomial Logistic Classification
+            # step 1.
+            # Compute y from the linear model y = WX + b, where b is the bias and W is randomly chosen on
+            # Gaussian distribution and bias is set to zero. The result is called the logit.
+            # step 2.
+            # Compute the softmax function S(Y) which gives distribution
+            # step 3.
+            # Compute cross-entropy D(S, L) = - Sum_i L_i*log(S_i)
+            # step 4.
+            # Compute loss L = 1/N * D(S, L)
+            # step 5.
+            # Use gradient-descent to find minimum of loss wrt. w and b by minimizing L(w,b).
+            # Update your weight and bias until minimum of loss function is reached
+            # w_i -> w_i - alpha*delta_w L
+            # b -> b - alpha*delta_b L
+            # OBS. step 5 is faster optimized if you have transformed the data to have zero mean and equal variance
+            # mu(x_i) = 0
+            # sigma(x_i) = sigma(x_j)
+            # This transformation makes it a well conditioned problem.
+
+            # Make a 2-layer Neural network (count number of layers of adaptive weights) with num_columns nodes
+            # in hidden layer.
+            # Initialize weights on truncated normal distribution. Initialize biases to zero.
+            # For every input vector corresponding to one sample we have D features s.t.
+            # a_j = Sum_i^D w^(1)_ji x_i + w^(1)_j0 , where index j is the number of nodes in the first hidden layer
+            # and it runs j=1,...,M
+            # Vectorizing makes the notation more compact
+            #     | --- x_1 --- |
+            #     | --- x_2 --- |
+            # X = | --- ..  --- |
+            #     | --- x_N --- |
+            # where each x is now a sample vector of dimension (1 x D) and where N is the number of samples.
+            # Similarly, define a tiling of N weight matrices w,
+            #     | --- w --- |
+            #     | --- w --- |
+            # W = | --- ..--- |
+            #     | --- w --- |
+            # where each w is now a matrix of dimension (M x D)
+            # We now form the tensor product between W and X but we need to transpose X as x.T to get (M x D).(D x 1)
+            # multiplication,
+            #       |  w.(x_1.T) |
+            #       |  w.(x_2.T) |
+            # W.X = |  ..        |
+            #       |  w.(x_N.T) |
+            # with W.X having dimensions (M*N x 1).
+            # Additionally, define a tiling of N bias vectors b that each are of dimension (M x 1),
+            #     |  b  |
+            #     |  b  |
+            # B = |  .. |
+            #     |  b  |
+            # with B having dimensions (M*N x 1).
+            # Finally, the activation is a (M*N x 1) vector given as A = W.X + B.
+            # Next, this is passed to an activation function like a simoid and then inserted in second layer of the NN.
+            # Let Z = sigmoid(A)
+            # Let C be the activation of the second layer,
+            # C = W^(2).Z + B^(2)
+            # where W^(2) is the tiling N second layer weight matrices w^(2) each with dimension (K x M). K is the
+            # number of outputs in the classification. The dimension of C is (K x N).
+            # Lastly, apply the sigmoid function to get the predictions
+            # P = sigmoid( C )
+            # which has dimensions (K x N) and is as expected an output vector (K x 1) for every N samples in our
+            # dataset. The output (K x 1)-vector is in a one-hot-encoded form.
+
+            # Choose number of nodes > than number of features.
+            M_nodes = 2*x_train.shape[1]
+            weights_1_layer = tf.Variable(tf.truncated_normal([num_columns, M_nodes], dtype=np.float64))
+            biases_1_layer = tf.Variable(tf.zeros([M_nodes], dtype=np.float64))
+            weights_2_layer = tf.Variable(tf.truncated_normal([M_nodes, num_labels], dtype=np.float64))
+            biases_2_layer = tf.Variable(tf.zeros([num_labels], dtype=np.float64))
+
+            # Logits and loss function.
+            logits_hidden_1_layer = titanic_panda_inst.linear_model(tf_train, weights_1_layer, biases_1_layer)
+            # Output unit activations of first layer
+            a_1_layer = titanic_panda_inst.activation_hidden(logits_hidden_1_layer)
+            logits_2_layer = titanic_panda_inst.linear_model(a_1_layer, weights_2_layer, biases_2_layer)
+            switch_var = 0
+            if switch_var == 1:
+                loss_function = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=tf_train_labels,
+                                                                                       logits=logits_2_layer))
+            else:
+                loss_function = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf_train_labels,
+                                                                                       logits=logits_2_layer))
+
+            # Find minimum of loss function using gradient-descent.
+            optimized_weights_and_bias = tf.train.GradientDescentOptimizer(0.5).minimize(loss=loss_function)
+
+            # Accuracy variables using the initial values for weights and bias of our linear model.
+            train_prediction = titanic_panda_inst.activation_out(logits_2_layer)
+            # Applying optimized weights and bias to validation data
+            # logits_hidden_1_layer_val = porto_seguro_insur.linear_model(tf_val, weights_1_layer, biases_1_layer)
+            # a_1_layer_val = porto_seguro_insur.activation_hidden(logits_hidden_1_layer_val)
+            # logits_2_layer_val = porto_seguro_insur.linear_model(a_1_layer_val, weights_2_layer, biases_2_layer)
+            # val_prediction = porto_seguro_insur.activation_out(logits_2_layer_val)
+
+            # Applying optimized weights and bias to test data
+            logits_hidden_1_layer_test = titanic_panda_inst.linear_model(tf_test, weights_1_layer, biases_1_layer)
+            a_1_layer_test = titanic_panda_inst.activation_hidden(logits_hidden_1_layer_test)
+            logits_2_layer_test = titanic_panda_inst.linear_model(a_1_layer_test, weights_2_layer, biases_2_layer)
+            test_prediction = titanic_panda_inst.activation_out(logits_2_layer_test)
+
+        number_of_iterations = 900
+        # Creating a tensorflow session to effeciently run same computation multiple times using definitions in defined
+        # dataflow graph.
+        with tf.Session(graph=graph) as session:
+            # Ensure that variables are initialized as done in our graph defining the dataflow.
+            tf.global_variables_initializer().run()
+            for ite in range(number_of_iterations):
+                # Compute loss and predictions
+                loss, predictions = session.run([optimized_weights_and_bias, loss_function, train_prediction])[1:3]
+                if ite % 100 == 0:
+                    print('Loss at iteration %d: %f' % (ite, loss))
+                    print('Training accuracy: %.1f%%' % titanic_panda_inst.accuracy(predictions, y_train))
+            # print('Test accuracy: %.1f%%' % titanic_panda_inst.accuracy(val_prediction.eval(), y_val))
+            output = test_prediction.eval()
+
     ''' Submission '''
     # Submission requires a csv file with PassengerId and Survived columns.
     # Compare with best submission score: 0.79
-    # dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanic_79Score.csv', header=0)
-    # dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanicFeatTitle079426.csv', header=0)
-    # dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanic078947.csv', header=0)
-    dfBestScore = pd.read_csv('/home/mizio/Documents/Kaggle/Titanic/submission/submissionTitanic.csv', header=0)
+    dfBestScore = pd.read_csv('../submissionTitanic.csv', header=0)
 
     # We do not expect all to be equal since the learned model differs from time to time.
     # print (dfBestScore.values[0::, 1::].ravel() == output.astype(int))
     # print np.array_equal(dfBestScore.values[0::, 1::].ravel(), output.astype(int))  # But they are almost never all equal
-    savePath = '/home/mizio/Documents/Kaggle/Titanic/submission/'
-    submission = pd.DataFrame({'PassengerId': passengerId_df_test, 'Survived': output.astype(int)})
-    submission.to_csv(''.join([savePath, 'submissionTitanic.csv']), index=False)
+    savePath = '../submission/'
+    if is_tensorflow:
+        submission = pd.DataFrame({'PassengerId': passengerId_df_test, 'Survived': np.argmax(output, 1)})
+        submission.to_csv(''.join([savePath, 'TensorFlow_submissionTitanic.csv']), index=False)
+    else:
+        submission = pd.DataFrame({'PassengerId': passengerId_df_test, 'Survived': output.astype(int)})
+        submission.to_csv(''.join([savePath, 'submissionTitanic.csv']), index=False)
 
     # Using numpy instead of Pandas for submit
     # submitArray = np.array([passengerId_df_test.values, output]).T
